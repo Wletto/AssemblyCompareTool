@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace AssemblyCompare
 {
@@ -14,57 +13,54 @@ namespace AssemblyCompare
         /// <summary>
         /// 目录文件比较
         /// </summary>
-        /// <param name="dir1"></param>
-        /// <param name="dir2"></param>
-        /// <param name="dir3"></param>
+        /// <param name="previousVerDir">上一版本目录</param>
+        /// <param name="newVerDir">最新版本目录</param>
+        /// <param name="differenceVerDir">差异程序包目录</param>
         /// <returns></returns>
-       public  int CompareFiles(string dir1, string dir2, string dir3)
+       public  int CompareFiles(string previousVerDir, string newVerDir, string differenceVerDir)
         {
-            List<string> file_list1 = ListFiles(dir1, "*", 1); 
-            List<string> file_list2 = this.ListFiles(dir2, "*", 1); 
+            var fileList1 = ListFiles(previousVerDir, "*", 1); 
+            var fileList2 = ListFiles(newVerDir, "*", 1); 
 
-            List<List<string>> diff_result = this.DiffFileList(file_list1, file_list2);
+            var diffResult = DiffFileList(fileList1, fileList2);
 
-            List<string> common_list = diff_result[0];
-            List<string> insert_list = diff_result[1];
-            List<string> remove_list = diff_result[2];
+            var commonList = diffResult[0];
+            var insertList = diffResult[1];
 
-            List<string> modify_list = new List<string>();
-            foreach (string file_name in common_list)
+            var modifyList = new List<string>();
+            foreach (var fileName in commonList)
             {
-                if (!System.IO.Directory.Exists(dir1 + file_name) && !System.IO.Directory.Exists(dir2 + file_name))
+                if (Directory.Exists(previousVerDir + fileName) || Directory.Exists(newVerDir + fileName)) continue;
+                Console.Out.WriteLine("文件对比： " + previousVerDir + fileName + " 和文件 " + newVerDir + fileName);
+                if (!FileEqual(previousVerDir + fileName, newVerDir + fileName))
                 {
-                    System.Console.Out.WriteLine("文件对比： " + dir1 + file_name + " 和文件 " + dir2 + file_name);
-                    if (!FileEqual(dir1 + file_name, dir2 + file_name))
-                    {
-                         modify_list.Add(file_name);
-                    }
+                    modifyList.Add(fileName);
                 }
             } 
-            foreach (string file_name in insert_list)
+            foreach (var fileName in insertList)
             {
-                if (System.IO.Directory.Exists(dir1 + file_name))
+                if (Directory.Exists(previousVerDir + fileName))
                 {
-                    System.IO.Directory.CreateDirectory(dir3 + file_name);
-                    System.Console.Out.WriteLine("目录创建 " + dir3 + file_name);
+                    Directory.CreateDirectory(differenceVerDir + fileName);
+                    Console.Out.WriteLine("目录创建 " + differenceVerDir + fileName);
                 }
                 else
                 {
-                    string path_name = dir3 + file_name;
-                    string dir_name = path_name.Substring(0, path_name.LastIndexOf('\\'));
-                    System.IO.Directory.CreateDirectory(dir_name);
-                    System.IO.File.Copy(dir1 + file_name, dir3 + file_name, true);
-                    System.Console.Out.WriteLine("复制文件  " + dir1 + file_name + " 到 " + dir3 + file_name);
+                    var pathName = differenceVerDir + fileName;
+                    var dirName = pathName.Substring(0, pathName.LastIndexOf('\\'));
+                    Directory.CreateDirectory(dirName);
+                    File.Copy(previousVerDir + fileName, differenceVerDir + fileName, true);
+                    Console.Out.WriteLine("复制文件  " + previousVerDir + fileName + " 到 " + differenceVerDir + fileName);
                 }
             }
 
-            foreach (string file_name in modify_list)
+            foreach (var fileName in modifyList)
             {
-                string path_name = dir3 + file_name;
-                string dir_name = path_name.Substring(0, path_name.LastIndexOf('\\'));
-                System.IO.Directory.CreateDirectory(dir_name);
-                System.IO.File.Copy(dir1 + file_name, dir3 + file_name, true);
-                System.Console.Out.WriteLine("复制文件 " + dir1 + file_name + " 到 " + dir3 + file_name);
+                var pathName = differenceVerDir + fileName;
+                var dirName = pathName.Substring(0, pathName.LastIndexOf('\\'));
+                Directory.CreateDirectory(dirName);
+                File.Copy(previousVerDir + fileName, differenceVerDir + fileName, true);
+                Console.Out.WriteLine("复制文件 " + previousVerDir + fileName + " 到 " + differenceVerDir + fileName);
             }
             Console.ReadLine();
             return 0;
@@ -75,84 +71,71 @@ namespace AssemblyCompare
        /// </summary>
        /// <param name="fileA"></param>
        /// <param name="fileB"></param>
-       private  bool FileEqual(string fileA, string fileB)
-       { 
-           byte[] fileAbytes;
-           byte[] fileBbytes;
-           string md5codeA = "";
-           string md5codeB = "";
+       private static bool FileEqual(string fileA, string fileB)
+       {
+           var md5CodeA = "";
+           var md5CodeB = "";
 
            if (File.Exists(fileA))
            {
-               fileAbytes = File2Bytes(fileA);
+               var fileAbytes = File2Bytes(fileA);
                if (fileAbytes.Length > 0)
                {
-                   if (this.IsDllFile(fileA))
+                   if (IsDllFile(fileA))
                    {
                        PEFile.ReplacePEValue(fileAbytes);
                    } 
-                   else if (this.IsSOFile(fileA))
+                   else if (IsSoFile(fileA))
                    {
                        ElfParseDll.ReplaceElfValue(fileAbytes); 
-                   }
-                  // System.IO.File.WriteAllBytes(@"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Compare\cache1.dll", fileAbytes);
-                   md5codeA = GetMD5HashFromFile(fileAbytes);
-                   System.Console.Out.WriteLine("【MD5码】 " + fileA + " = " + md5codeA);
+                   } 
+                   md5CodeA = GetMD5HashFromFile(fileAbytes);
+                   Console.Out.WriteLine("【MD5码】 " + fileA + " = " + md5CodeA);
                }
            }
            else
            {
-               System.Console.Out.WriteLine(" 文件 " + fileA + " 不存在!!!");
+               Console.Out.WriteLine(" 文件 " + fileA + " 不存在!!!");
                return false;
            }
 
            if (File.Exists(fileB))
            {
-               fileBbytes = File2Bytes(fileB);
-               if (fileBbytes.Length > 0)
+               var fileBbytes = File2Bytes(fileB);
+               if (fileBbytes.Length <= 0) return (md5CodeA == md5CodeB);
+               if (IsDllFile(fileB))
                {
-                   if (this.IsDllFile(fileB))
-                   {
-                       PEFile.ReplacePEValue(fileBbytes);
-                   } 
-                   else if (this.IsSOFile(fileB)) 
-                   {
-                       ElfParseDll.ReplaceElfValue(fileBbytes); 
-                   }
-                  // System.IO.File.WriteAllBytes(@"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Compare\cache2.dll", fileBbytes);
-                   md5codeB = GetMD5HashFromFile(fileBbytes);
-                   System.Console.Out.WriteLine("【MD5码】 " + fileB + " = " + md5codeB);
-               }
+                   PEFile.ReplacePEValue(fileBbytes);
+               } 
+               else if (IsSoFile(fileB)) 
+               {
+                   ElfParseDll.ReplaceElfValue(fileBbytes); 
+               } 
+               md5CodeB = GetMD5HashFromFile(fileBbytes);
+               Console.Out.WriteLine("【MD5码】 " + fileB + " = " + md5CodeB);
            }
            else
            {
-               System.Console.Out.WriteLine(" 文件 " + fileB+ " 不存在!!!");
+               Console.Out.WriteLine(" 文件 " + fileB+ " 不存在!!!");
                return false;
            }
  
-           return (md5codeA == md5codeB);
+           return (md5CodeA == md5CodeB);
        }
 
         /// <summary>
         /// 查找目录文件列表
         /// </summary>
-        /// <param name="_path"></param>
-        /// <param name="_file"></param>
-        /// <param name="_r"></param>
+        /// <param name="path"></param>
+        /// <param name="file"></param>
+        /// <param name="r"></param>
         /// <returns></returns>
-       private List<string> ListFiles(string _path, string _file, int _r)
+       private static List<string> ListFiles(string path, string file, int r)
        {
-           SearchOption searchOption = (_r == 1) ? (SearchOption.AllDirectories) : (SearchOption.TopDirectoryOnly);
-           List<string> filenameList = new List<string>();
-           foreach (string filename in Directory.EnumerateFileSystemEntries(_path, _file, searchOption))
-           {
-               filenameList.Add(filename.Substring(_path.Length));
-           }
-           //文件名排个序
-           filenameList.Sort((a, b) =>
-           {
-               return string.Compare(a, b);
-           });
+           var searchOption = (r == 1) ? (SearchOption.AllDirectories) : (SearchOption.TopDirectoryOnly);
+           var filenameList = Directory.EnumerateFileSystemEntries(path, file, searchOption).Select(filename => filename.Substring(path.Length)).ToList();
+            //文件名排个序
+           filenameList.Sort(string.Compare);
            return filenameList;
        }
 
@@ -162,60 +145,54 @@ namespace AssemblyCompare
         /// <param name="list1"></param>
         /// <param name="list2"></param>
         /// <returns></returns>
-       private List<List<string>> DiffFileList(List<string> list1, List<string> list2)
+       private static List<List<string>> DiffFileList(List<string> list1, List<string> list2)
        {
-           list1.Sort((a, b) =>
-           {
-               return string.Compare(a, b);
-           });
-           list2.Sort((a, b) =>
-           {
-               return string.Compare(a, b);
-           });
+           list1.Sort(string.Compare);
+           list2.Sort(string.Compare);
 
-           List<List<string>> result = new List<List<string>>();
-           List<string> insert_list = new List<string>();
-           List<string> remove_list = new List<string>();
-           List<string> common_list = new List<string>();
+           var result = new List<List<string>>();
+           var insertList = new List<string>();
+           var removeList = new List<string>();
+           var commonList = new List<string>();
 
-           int index1 = 0;
-           int index2 = 0;
-           int n1 = list1.Count();
-           int n2 = list2.Count();
+           var index1 = 0;
+           var index2 = 0;
+           var n1 = list1.Count();
+           var n2 = list2.Count();
            while (index1 < n1 && index2 < n2)
            {
-               int compare_value = string.Compare(list1[index1], list2[index2]);
-               if (compare_value == 0)
+               var compareValue = string.Compare(list1[index1], list2[index2]);
+               if (compareValue == 0)
                {
-                   common_list.Add(list1[index1]);
+                   commonList.Add(list1[index1]);
                    index1++;
                    index2++;
                }
-               else if (compare_value < 0)
+               else if (compareValue < 0)
                {
-                   insert_list.Add(list1[index1]);
+                   insertList.Add(list1[index1]);
                    index1++;
                }
-               else if (compare_value > 0)
+               else if (compareValue > 0)
                {
-                   remove_list.Add(list2[index2]);
+                   removeList.Add(list2[index2]);
                    index2++;
                }
            }
            while (index1 < n1)
            {
-               insert_list.Add(list1[index1]);
+               insertList.Add(list1[index1]);
                index1++;
            }
            while (index2 < n2)
            {
-               remove_list.Add(list2[index2]);
+               removeList.Add(list2[index2]);
                index2++;
            }
 
-           result.Add(common_list);
-           result.Add(insert_list);
-           result.Add(remove_list);
+           result.Add(commonList);
+           result.Add(insertList);
+           result.Add(removeList);
 
            return result;
        }
@@ -224,21 +201,21 @@ namespace AssemblyCompare
         /// <summary>
         /// 判断是否为PE 文件
         /// </summary>
-        /// <param name="file_name"></param>
+        /// <param name="fileName"></param>
         /// <returns></returns>
-       private bool IsDllFile(string file_name)
+       private static bool IsDllFile(string fileName)
        {
-           return file_name.EndsWith(".dll") || file_name.EndsWith(".exe");
+           return fileName.EndsWith(".dll") || fileName.EndsWith(".exe");
        }
 
         /// <summary>
         /// 判断是否为SO文件
         /// </summary>
-        /// <param name="file_name"></param>
+        /// <param name="fileName"></param>
         /// <returns></returns>
-       private bool IsSOFile(string file_name)
+       private static bool IsSoFile(string fileName)
        {
-           return file_name.EndsWith(".so");
+           return fileName.EndsWith(".so");
        }
 
        /// <summary>
@@ -250,14 +227,14 @@ namespace AssemblyCompare
        {
            try
            {
-               FileStream file = new FileStream(fileName, System.IO.FileMode.Open);
+               var file = new FileStream(fileName, System.IO.FileMode.Open);
                MD5 md5 = new MD5CryptoServiceProvider();
-               byte[] retVal = md5.ComputeHash(file);
+               var retVal = md5.ComputeHash(file);
                file.Close();
-               StringBuilder sb = new StringBuilder();
-               for (int i = 0; i < retVal.Length; i++)
+               var sb = new StringBuilder();
+               foreach (var t in retVal)
                {
-                   sb.Append(retVal[i].ToString("x2"));
+                   sb.Append(t.ToString("x2"));
                }
                return sb.ToString();
            }
@@ -267,21 +244,21 @@ namespace AssemblyCompare
            }
        }
 
-       /// <summary>
-       /// 获取文件的MD5码
-       /// </summary>
-       /// <param name="fileName">传入的文件名（含路径及后缀名）</param>
-       /// <returns></returns>
-       public string GetMD5HashFromFile(byte[] filebytes)
+        /// <summary>
+        /// 获取文件的MD5码
+        /// </summary> 
+        /// <param name="filebytes">文件数据字节</param>
+        /// <returns></returns>
+        private static string GetMD5HashFromFile(byte[] filebytes)
        {
            try
            {
                MD5 md5 = new MD5CryptoServiceProvider();
-               byte[] retVal = md5.ComputeHash(filebytes);
-               StringBuilder sb = new StringBuilder();
-               for (int i = 0; i < retVal.Length; i++)
+               var retVal = md5.ComputeHash(filebytes);
+               var sb = new StringBuilder();
+               foreach (var t in retVal)
                {
-                   sb.Append(retVal[i].ToString("x2"));
+                   sb.Append(t.ToString("x2"));
                }
                return sb.ToString();
            }
@@ -296,18 +273,17 @@ namespace AssemblyCompare
        /// </summary>
        /// <param name="path">文件地址</param>
        /// <returns>转换后的byte数组</returns>
-       public static byte[] File2Bytes(string path)
+       private static byte[] File2Bytes(string path)
        {
            if (!File.Exists(path))
            {
                return new byte[0];
            }
-           FileInfo fi = new FileInfo(path);
-           byte[] buff = new byte[fi.Length];
-           FileStream fs = fi.OpenRead();
+           var fi = new FileInfo(path);
+           var buff = new byte[fi.Length];
+           var fs = fi.OpenRead();
            fs.Read(buff, 0, Convert.ToInt32(fs.Length));
            fs.Close();
-
            return buff;
        } 
     }

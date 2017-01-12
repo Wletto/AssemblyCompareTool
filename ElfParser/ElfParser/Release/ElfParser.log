@@ -1,0 +1,17 @@
+﻿生成启动时间为 2016/6/8 14:46:08。
+     1>项目“I:\Homs3.0\OPlus\trunk\Tools\ElfParser\ElfParser\ElfParser.vcxproj”在节点 3 上(Rebuild 个目标)。
+     1>ClCompile:
+         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /Zi /nologo /W3 /WX- /O2 /Oi /Oy- /GL /D WIN32 /D NDEBUG /D _WINDOWS /D _USRDLL /D ELFPARSER_EXPORTS /D _WINDLL /D _UNICODE /D UNICODE /Gm- /EHsc /MD /GS /Gy /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Release\\" /Fd"Release\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt ..\src\Source.cpp
+         Source.cpp
+     1>..\src\Source.cpp(86): warning C4244: “参数”: 从“uint64_t”转换到“size_t”，可能丢失数据
+       Link:
+         D:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.dll" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.pdb" /SUBSYSTEM:WINDOWS /OPT:REF /OPT:ICF /LTCG /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.lib" /MACHINE:X86 /SAFESEH /DLL Release\Source.obj
+            正在创建库 I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.lib 和对象 I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.exp
+         正在生成代码
+         已完成代码的生成
+         ElfParser.vcxproj -> I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Release\ElfParser.dll
+     1>已完成生成项目“I:\Homs3.0\OPlus\trunk\Tools\ElfParser\ElfParser\ElfParser.vcxproj”(Rebuild 个目标)的操作。
+
+生成成功。
+
+已用时间 00:00:01.79
