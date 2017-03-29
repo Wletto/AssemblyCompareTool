@@ -75,7 +75,6 @@ namespace AssemblyCompare
        {
            var md5CodeA = "";
            var md5CodeB = "";
-
            if (File.Exists(fileA))
            {
                var fileAbytes = File2Bytes(fileA);

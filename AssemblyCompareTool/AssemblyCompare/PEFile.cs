@@ -34,7 +34,18 @@ namespace AssemblyCompare
 
                 var BaseIndex = codenum - sizenum; //1800
                 //int BaseIndex = 1800;
-                // 读出PE 169-172 字节  得出 DEBUG_DIR目录 
+
+                //替换校验和，在微软可执行格式中，这个域被忽略并且置为0 。这个规则的一个例外情况是信任服务，这类文件必须有一个合法的校验和
+                var checkSum = ReadByte(fileAbytes, pelens + 88, 4);
+                if (checkSum != 0)
+                {
+                    fileAbytes[pelens + 88] = 0;
+                    fileAbytes[pelens + 89] = 0;
+                    fileAbytes[pelens + 90] = 0;
+                    fileAbytes[pelens + 91] = 0;
+                }
+
+                // 读出PE 169-172 字节  得出 DEBUG_DIR目录 0x3300
                 var debug_offset = ReadByte(fileAbytes, pelens+168, 4);
                 if (debug_offset != 0)
                 {
@@ -52,8 +63,17 @@ namespace AssemblyCompare
                    
                     // 找到DEBUG目录开始地址，替换指定长度为0, 这里是抹掉PDBID，时间戳
                     // int debugdir_lens = ReadByte(fileAbytes, pelens + 172, 4);
-                    //????这里直接用52不合适，应该取其长度
-                    for (var i = 0; i < 52; i++)
+                    //这里直接用52不合适，应该取其长度
+                   
+                    //pdb路径初始位置
+                    var pdbindex = debugdirindex + 52;
+                    var contents = BitConverter.ToString(fileAbytes, pdbindex);
+                    contents = contents.Replace("-", "");
+                    var keystr = "2E706462";  //.pdb 二进制码   
+                    var query = contents.IndexOf(keystr);
+                    query = query / 2;
+                    var pdblen = query + 4;
+                    for (var i = 0; i < 52 + pdblen; i++)
                     {
                         fileAbytes[debugdirindex + i] = 0;
                     }
@@ -62,18 +82,50 @@ namespace AssemblyCompare
                 //meta的长度和偏移都为可能为0，需要判断长度
                 // metadata  目录起始位置为 169 + 64 =233  ~236 
                 // metadata 目录位置  Meta_DIRSTR     // 经验值 00002008 十进制是 8200，这里的169  
-                //var meta_data = ReadByte(fileAbytes, pelens + 232, 4);
-               var  meta_data = 8200;
+                var meta_data = ReadByte(fileAbytes, pelens + 232, 4);
+                //var  meta_data = 8200; 这里是固定值。
                 if (meta_data == 0) return;
                 // 先转换为10进制 再计算
                 meta_data = meta_data - BaseIndex; 
 
+                //替换强名称                
+                var StrongNameRVAIndex = meta_data + 32;
+                var StrongNameSigtureRVA = ReadByte(fileAbytes, StrongNameRVAIndex, 4);
+                var StrongNameSIZEIndex = meta_data + 36;
+                var StrongNameSigtureSIZE = ReadByte(fileAbytes, StrongNameSIZEIndex, 4);
+                //获取强名称在文件中的位置
+                var StrongNameLocation = StrongNameSigtureRVA - BaseIndex;
+                if (StrongNameSigtureSIZE != 0)
+                {
+                    for (var i = 0; i < StrongNameSigtureSIZE; i++)
+                    {
+                        fileAbytes[StrongNameLocation + i] = 0;
+                    }
+                }
+
                 meta_data = meta_data + 8; // meta_data RVA 地址 
                 var size0 =ReadByte(fileAbytes, meta_data, 4);
-                var dotnetindex = size0 - BaseIndex; 
+                //元数据标头
+                var dotnetindex = size0 - BaseIndex;
+                //var tmp = dotnetindex ;
 
+                ////获取版本长度
+                //var versionlength = ReadByte(fileAbytes, dotnetindex + 12, 4);
+                //// 定位到MVID ,这里是.NET 数据流的起始位置  
+                //dotnetindex = dotnetindex + versionlength;
+                ////定位到#GUID目录，获取其位置及大小
+                //dotnetindex = dotnetindex + 44;
+                ////位置
+                //var OFFset = ReadByte(fileAbytes, dotnetindex, 4);
+                //var size = ReadByte(fileAbytes, dotnetindex + 4, 8);
+                ////#GUID数据流起始位置
+                //var netDataDir = tmp + OFFset;
+                //大小
+
+                //获取版本长度
+                var versionlength = ReadByte(fileAbytes, dotnetindex + 12, 4);
                 // 定位到MVID ,这里是.NET 数据流的起始位置  
-                dotnetindex = dotnetindex + 32;
+                dotnetindex = dotnetindex + versionlength + 20;
 
                 /// 直接读size     #~  ，#strings, #US,  #GUID
                 /// #~ sizeindex      dotnetindex=dotnetindex+4
@@ -85,14 +137,12 @@ namespace AssemblyCompare
                 // #US
                 dotnetindex = dotnetindex + 20; 
                 var size3 = ReadByte(fileAbytes, dotnetindex, 4); 
-
-                var size = size1 + size2 + size3;
-
-                /// .net 数据流的目录结构长度为40  。 
+                var size = size1 + size2 + size3;//#~、#Strings、#US的数据流大小
+                /// .net 数据流的目录结构长度为40 = 8(#US大小及名称) + 16（#GUID） + 16(#Blob)
                 var netDataDir = dotnetindex + 40;
                 netDataDir = netDataDir + size;
 
-                /// 往后替换16个字节,mvid 
+                /// 往后替换16个字节,mvid ,即抹去#GUID
                 for (var i = 0; i < 16; i++)
                 {
                     fileAbytes[netDataDir + i] = 0;
@@ -102,8 +152,8 @@ namespace AssemblyCompare
                 var switchCaseIndex = SwitchCaseStr(fileAbytes);
                 if (switchCaseIndex <= 0) return;
                 {
-                    // 这里是过滤出 <PrivateImplementationDetails> 的位置，然后往后38个长度的字节抹零处理。加上本身60个长度
-                    for (var i = 0; i < 98; i++)
+                    // 这里是过滤出 <PrivateImplementationDetails> 后面签名的位置（不包括签名前面的"<"符号），然后往后36个长度的字节抹零处理，抹掉该签名
+                    for (var i = 0; i < 36; i++)
                     {
                         fileAbytes[switchCaseIndex + i] = 0;
                     }
@@ -168,17 +218,22 @@ namespace AssemblyCompare
         /// <returns></returns>
         private static int SwitchCaseStr(byte[] inputbytes)
         {
-                                          
+            //<PrivateImplementationDetails> 是一种机制。在.net中，如果switch中出现6个以上的case，.net编译器就会触发该机制，自动对某些指令进行优化。
+                         
             //16进制  {3C, 50, 72, 69, 76, 61, 74, 65, 49, 6D, 70, 6C, 65, 6D, 65, 6E ,74, 61 ,74, 69 ,6F, 6E ,44, 65, 74, 61, 69, 6C, 73 ,3E};
             byte[] aa = new byte[] { 60, 80, 114, 105, 118, 97, 101, 73, 109, 112, 108, 101, 109, 101, 110, 116, 97, 116, 105, 111, 110, 68, 101, 116, 97, 105, 108, 115, 62 };
             
             // int query = inputbytes.Select((x, i) => new { i, x = inputbytes.Skip(i).Take(30) }).FirstOrDefault(x => x.x.SequenceEqual(aa)).i;
-
+            //将输入的字节类型数组转为16进制字符串
             var contents = BitConverter.ToString(inputbytes);
             contents=contents.Replace("-","");
-            var keystr = "3C50726976617465496D706C656D656E746174696F6E44657461696C733E";            
+            var keystr = "3C50726976617465496D706C656D656E746174696F6E44657461696C733E";
+
+            //获取<PrivateImplementationDetails>的位置
             var query = contents.IndexOf(keystr);
-            query = query / 2;
+
+            //该位置除以2即为<PrivateImplementationDetails>在PE文件中的索引位置，再加上31，即可到达<PrivateImplementationDetails>后面的签名部分，每次编译签名均不相同，因此该部分必须抹除
+            query = query / 2 + 31;
             return query;
         }
     }

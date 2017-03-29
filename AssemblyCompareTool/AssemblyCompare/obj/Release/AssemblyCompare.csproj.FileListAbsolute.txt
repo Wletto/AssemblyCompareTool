@@ -1,0 +1,4 @@
+E:\开源项目\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompareTool\Release\AssemblyCompare.exe
+E:\开源项目\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompareTool\Release\AssemblyCompare.pdb
+E:\开源项目\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompare\obj\Release\AssemblyCompare.exe
+E:\开源项目\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompareTool\AssemblyCompare\obj\Release\AssemblyCompare.pdb

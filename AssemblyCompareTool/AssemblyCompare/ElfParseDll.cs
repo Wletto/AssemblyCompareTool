@@ -5,12 +5,10 @@ using System.IO;
 namespace AssemblyCompare
 {
   public  class ElfParseDll
-    {
-        int curcnt = 0;
+    { 
 
         [DllImport("ElfParser.dll", EntryPoint = "ParseElf", CharSet = CharSet.Auto)]
-        public static extern int ParseElf(ref byte prtStr);
-
+        public static extern int ParseElf(ref byte prtStr); 
 
         public static void ReplaceElfValue(byte[] fileAbytes)
         {

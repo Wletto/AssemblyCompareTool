@@ -28,10 +28,7 @@ namespace AssemblyCompare
             } 
 
             FileCompare instance = new FileCompare();
-
-           // return instance.CompareFiles(@"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Compare\1", @"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Compare\2", @"I:\Homs3.0\OPlus\trunk\Tools\AssemblyCompareTool\Compare\3");
-
-
+             
             if (!System.IO.Directory.Exists(args[0]))
             {
                 System.Console.Out.WriteLine("目录 " + args[0] + " 不存在!!!");
